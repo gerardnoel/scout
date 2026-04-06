@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCOUT — Job Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #060d18; color: #cbd5e1; font-family: 'IBM Plex Mono', monospace; }
+  input, textarea, select, button { font-family: 'IBM Plex Sans', sans-serif; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #060d18; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+  /* ── Inputs ── */
+  .inp { background: #0a1525; border: 1px solid #1a2e4a; border-radius: 6px; color: #e2e8f0; padding: 8px 11px; font-size: 13px; width: 100%; outline: none; transition: border .15s; }
+  .inp:focus { border-color: #38bdf8; }
+  .lbl { font-size: 9px; color: #334155; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .07em; display: block; }
+
+  /* ── Buttons ── */
+  .btn { cursor: pointer; border: none; border-radius: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 7px 14px; transition: all .15s; white-space: nowrap; font-weight: 500; }
+  .bp { background: #38bdf8; color: #060d18; font-weight: 700; }
+  .bp:hover { background: #7dd3fc; }
+  .bp:disabled { background: #0c2a3d; color: #1e3a52; cursor: not-allowed; }
+  .bg { background: transparent; color: #475569; border: 1px solid #1a2e4a; }
+  .bg:hover { background: #0a1525; color: #94a3b8; }
+  .bd { background: #2d0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+  .bd:hover { background: #450a0a; }
+
+  /* ── Pills ── */
+  .pill { display: inline-block; border-radius: 4px; font-size: 9px; padding: 2px 7px; font-weight: 600; letter-spacing: .04em; }
+
+  /* ── Cards ── */
+  .card { background: #090f1e; border: 1px solid #0f1d33; border-radius: 8px; padding: 11px; cursor: pointer; transition: border-color .15s, transform .1s; }
+  .card:hover { border-color: #38bdf840; transform: translateY(-1px); }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  .hdr { position: sticky; top: 0; background: #060d18; z-index: 20; border-bottom: 1px solid #0a1525; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .hdr-left { display: flex; align-items: center; gap: 10px; }
+  .hdr-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .statbar { display: flex; border-bottom: 1px solid #0a1525; }
+  .statcell { flex: 1; padding: 10px 16px; border-right: 1px solid #0a1525; }
+  .statcell:last-child { border-right: none; }
+  .statnum { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+  .statlbl { font-size: 9px; color: #1e2d45; margin-top: 3px; text-transform: uppercase; letter-spacing: .05em; }
+
+  .subtabs { display: flex; border-bottom: 1px solid #0a1525; padding: 0 20px; }
+  .subtab { cursor: pointer; padding: 10px 16px; font-size: 11px; font-weight: 600; border: none; background: transparent; font-family: 'IBM Plex Mono', monospace; transition: all .15s; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+
+  .filters { padding: 9px 20px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #0a1525; }
+
+  /* ── Board ── */
+  .board { padding: 14px; display: flex; gap: 10px; overflow-x: auto; align-items: flex-start; flex: 1; }
+  .col { background: #07101f; border: 1px solid #0a1525; border-radius: 10px; padding: 10px; min-width: 180px; flex: 1; }
+  .col-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .col-name { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+  .col-count { background: #060d18; color: #1e2d45; border-radius: 10px; padding: 1px 7px; font-size: 9px; }
+
+  /* ── Table ── */
+  .tbl-wrap { padding: 12px 20px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 7px 10px; color: #1e2d45; font-weight: 600; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; border-bottom: 1px solid #0a1525; }
+  td { padding: 9px 10px; border-bottom: 1px solid #090f1e; }
+  tr.clickable { cursor: pointer; transition: background .1s; }
+  tr.clickable:hover { background: #090f1e; }
+
+  /* ── Modal overlay ── */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 100; display: none; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto; }
+  .overlay.open { display: flex; }
+  .modal { background: #0a1525; border: 1px solid #1a2e4a; border-radius: 14px; width: 100%; max-width: 680px; padding: 24px; margin: auto; }
+
+  /* ── Form grid ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .span2 { grid-column: 1 / -1; }
+  .divrow { grid-column: 1 / -1; border-top: 1px solid #0a1525; padding-top: 11px; margin-top: 4px; font-size: 9px; color: #1e2d45; text-transform: uppercase; letter-spacing: .07em; }
+
+  /* ── Misc ── */
+  .tabbtn { cursor: pointer; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; border: none; font-family: 'IBM Plex Mono', monospace; transition: all .15s; }
+  .overdue-badge { background: #1a0808; color: #fca5a5; border: 1px solid #7f1d1d30; border-radius: 10px; padding: 2px 9px; font-size: 9px; font-weight: 700; cursor: pointer; letter-spacing: .04em; display: none; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; animation: spin 1s linear infinite; margin-right: 4px; }
+
+  @media (max-width: 600px) {
+    .statbar { flex-wrap: wrap; }
+    .statcell { min-width: 33%; }
+    .grid2 { grid-template-columns: 1fr; }
+    .span2 { grid-column: 1; }
+    .divrow { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <span style="font-size:14px;font-weight:600;color:#38bdf8;letter-spacing:-.02em">SCOUT</span>
+      <span style="color:#1a2e4a">/</span>
+      <span style="color:#1e3a52;font-size:11px">job tracker</span>
+      <span id="sync-msg" style="font-size:10px;margin-left:4px;color:#475569"></span>
+    </div>
+    <div class="hdr-right">
+      <span id="overdue-badge" class="overdue-badge" onclick="toggleOverdue()"></span>
+      <button class="btn bg" onclick="load('Refreshing…')" id="btn-refresh">↻ Refresh</button>
+      <button class="btn bg" onclick="doExport()">↓ CSV</button>
+      <div style="display:flex;background:#090f1e;border-radius:7px;padding:3px;border:1px solid #0f1d33">
+        <button class="tabbtn" id="vbtn-board" onclick="setView('board')">board</button>
+        <button class="tabbtn" id="vbtn-list" onclick="setView('list')">list</button>
+      </div>
+      <button class="btn bp" onclick="openJobModal(null)">+ Role</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="statbar">
+    <div class="statcell"><div class="statnum" id="s-total" style="color:#475569">0</div><div class="statlbl">Tracked</div></div>
+    <div class="statcell"><div class="statnum" id="s-active" style="color:#818cf8">0</div><div class="statlbl">Active</div></div>
+    <div class="statcell"><div class="statnum" id="s-interviewing" style="color:#f59e0b">0</div><div class="statlbl">Interviewing</div></div>
+    <div class="statcell"><div class="statnum" id="s-offers" style="color:#22c55e">0</div><div class="statlbl">Offers</div></div>
+    <div class="statcell"><div class="statnum" id="s-ints" style="color:#38bdf8">0</div><div class="statlbl">Interviews</div></div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div class="subtabs">
+    <button class="subtab" id="tab-roles" onclick="setTab('roles')">Roles</button>
+    <button class="subtab" id="tab-interviews" onclick="setTab('interviews')">Interview Log</button>
+  </div>
+
+  <!-- Roles pane -->
+  <div id="pane-roles">
+    <div class="filters">
+      <input class="inp" id="search" placeholder="Search roles, companies…" oninput="render()" style="width:200px;font-size:12px">
+      <select class="inp" id="fstage" onchange="render()" style="width:auto;font-size:12px">
+        <option>All</option><option>Seen</option><option>Applied</option><option>Interviewing</option><option>Offer</option><option>Rejected</option><option>Archived</option>
+      </select>
+      <select class="inp" id="fprob" onchange="render()" style="width:auto;font-size:12px">
+        <option>All</option><option>High</option><option>Med</option><option>Low</option>
+      </select>
+      <span id="fcount" style="color:#1e2d45;font-size:11px"></span>
+    </div>
+    <div id="board-view" class="board"></div>
+    <div id="list-view" class="tbl-wrap" style="display:none"></div>
+    <div id="empty-msg" style="display:none;padding:60px;text-align:center;color:#0f1d33;font-size:13px">No roles yet — hit + Role to start tracking.</div>
+  </div>
+
+  <!-- Interviews pane -->
+  <div id="pane-interviews" style="display:none;padding:14px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <span id="int-count" style="color:#334155;font-size:12px"></span>
+      <button class="btn bp" style="font-size:11px" onclick="openIntModal(null)">+ Log Interview</button>
+    </div>
+    <div id="int-table" style="overflow-x:auto"></div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Job Modal -->
+<div class="overlay" id="job-overlay" onclick="if(event.target===this)closeJobModal()">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span id="jm-title" style="font-size:13px;font-weight:600;color:#38bdf8">Add role</span>
+      <div style="display:flex;gap:7px">
+        <button class="btn bg" id="jm-log-int" style="font-size:10px;display:none" onclick="logIntFromJob()">+ Log Interview</button>
+        <button class="btn bg" onclick="closeJobModal()">✕</button>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="span2"><label class="lbl">Job title *</label><input class="inp" id="jf-title" placeholder="Head of Risk & Compliance"></div>
+      <div><label class="lbl">Company</label><input class="inp" id="jf-company" placeholder="Bupa Australia"></div>
+      <div><label class="lbl">Location</label><input class="inp" id="jf-location" placeholder="Melbourne"></div>
+      <div><label class="lbl">Work model</label>
+        <select class="inp" id="jf-workModel"><option>Hybrid</option><option>Remote</option><option>On-site</option></select>
+      </div>
+      <div><label class="lbl">Salary TFR</label><input class="inp" id="jf-salary" placeholder="$280k–$310k"></div>
+      <div><label class="lbl">Stage</label>
+        <select class="inp" id="jf-stage"><option>Seen</option><option>Applied</option><option>Interviewing</option><option>Offer</option><option>Rejected</option><option>Archived</option></select>
+      </div>
+      <div><label class="lbl">Probability</label>
+        <select class="inp" id="jf-probability"><option>High</option><option>Med</option><option>Low</option></select>
+      </div>
+      <div><label class="lbl">Source</label><input class="inp" id="jf-source" placeholder="Seek / LinkedIn / Recruiter"></div>
+      <div class="span2"><label class="lbl">Job URL</label><input class="inp" id="jf-url" placeholder="https://…"></div>
+
+      <div class="divrow">Contact</div>
+      <div><label class="lbl">Name</label><input class="inp" id="jf-contactName" placeholder="Recruiter / hiring manager"></div>
+      <div><label class="lbl">Email</label><input class="inp" id="jf-contactEmail" placeholder="name@company.com"></div>
+      <div class="span2"><label class="lbl">Phone</label><input class="inp" id="jf-contactPhone" placeholder="04xx xxx xxx"></div>
+
+      <div class="divrow">Dates & Actions</div>
+      <div><label class="lbl">Applied date</label><input class="inp" type="date" id="jf-appliedDate"></div>
+      <div><label class="lbl">Last activity</label><input class="inp" type="date" id="jf-lastActivity"></div>
+      <div><label class="lbl">Next action</label><input class="inp" id="jf-nextAction" placeholder="Send CV / Follow up / Prepare"></div>
+      <div><label class="lbl">Next action date</label><input class="inp" type="date" id="jf-nextActionDate"></div>
+
+      <div class="divrow">Notes</div>
+      <div class="span2"><label class="lbl">SCOUT fit / gaps</label><textarea class="inp" id="jf-scoutFit" rows="2" placeholder="PHI fit, sector shift narrative, gaps to address…" style="resize:vertical"></textarea></div>
+      <div class="span2"><label class="lbl">General notes</label><textarea class="inp" id="jf-notes" rows="3" placeholder="Interview feedback, salary discussions, referees, follow-up…" style="resize:vertical"></textarea></div>
+    </div>
+
+    <div id="jm-linked-ints"></div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:18px;padding-top:16px;border-top:1px solid #0a1525">
+      <div id="jm-del-area"></div>
+      <div style="display:flex;gap:7px">
+        <button class="btn bg" onclick="closeJobModal()">Cancel</button>
+        <button class="btn bp" onclick="saveJob()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Interview Modal -->
+<div class="overlay" id="int-overlay" onclick="if(event.target===this)closeIntModal()">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span id="im-title" style="font-size:13px;font-weight:600;color:#818cf8">Log interview</span>
+      <button class="btn bg" onclick="closeIntModal()">✕</button>
+    </div>
+    <div class="grid2">
+      <div class="span2"><label class="lbl">Role *</label>
+        <select class="inp" id="if-jobId"><option value="">Select role…</option></select>
+      </div>
+      <div><label class="lbl">Date</label><input class="inp" type="date" id="if-date"></div>
+      <div><label class="lbl">Type</label>
+        <select class="inp" id="if-type">
+          <option>Phone screen</option><option>Video — recruiter</option><option>Video — hiring manager</option>
+          <option>Panel</option><option>In-person</option><option>Technical</option>
+          <option>Case study</option><option>Reference check</option><option>Offer discussion</option>
+        </select>
+      </div>
+      <div class="span2"><label class="lbl">Interviewer(s)</label><input class="inp" id="if-interviewer" placeholder="Name, title"></div>
+      <div class="span2"><label class="lbl">Outcome</label>
+        <select class="inp" id="if-outcome">
+          <option value="">Pending…</option><option>Progressed</option><option>Awaiting feedback</option>
+          <option>Offer made</option><option>Rejected</option><option>Withdrawn</option>
+        </select>
+      </div>
+      <div class="span2"><label class="lbl">Notes — questions asked, red flags, salary discussed, next steps</label>
+        <textarea class="inp" id="if-notes" rows="5" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:18px;padding-top:16px;border-top:1px solid #0a1525">
+      <div id="im-del-area"></div>
+      <div style="display:flex;gap:7px">
+        <button class="btn bg" onclick="closeIntModal()">Cancel</button>
+        <button class="btn bp" onclick="saveInt()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1-CQr9bMR7wRJVA9_FZFw_GHGpHmRe9OhT48p45pbeuI';
+const API_KEY  = 'AIzaSyABWdZMKlsT1Mw7z0XIylg584884d0YgmU';
+const BASE     = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+
+const JH = ['id','title','company','location','workModel','salary','stage','probability','source','url','contactName','contactEmail','contactPhone','appliedDate','lastActivity','nextAction','nextActionDate','scoutFit','notes'];
+const IH = ['id','jobId','date','type','interviewer','outcome','notes'];
+
+const SCOL = { Seen:'#38bdf8', Applied:'#818cf8', Interviewing:'#f59e0b', Offer:'#22c55e', Rejected:'#ef4444', Archived:'#475569' };
+const PC   = { High:{bg:'#14532d',tx:'#86efac',bd:'#166534'}, Med:{bg:'#422006',tx:'#fcd34d',bd:'#92400e'}, Low:{bg:'#450a0a',tx:'#f87171',bd:'#7f1d1d'} };
+
+let jobs = [], ints = [], curView = 'board', curTab = 'roles';
+let editingJobId = null, editingIntId = null, overdueOnly = false;
+
+// ── Sheets API ─────────────────────────────────────────────────────
+async function gGet(range) {
+  const r = await fetch(`${BASE}/values/${encodeURIComponent(range)}?key=${API_KEY}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function gPut(range, values) {
+  const r = await fetch(`${BASE}/values/${encodeURIComponent(range)}?valueInputOption=RAW&key=${API_KEY}`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({range, values})
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
+async function gBatch(requests) {
+  const r = await fetch(`${BASE}:batchUpdate?key=${API_KEY}`, {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({requests})
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+function rowToObj(row, h) { const o={}; h.forEach((k,i)=>{ o[k]=row[i]||''; }); return o; }
+function objToRow(o, h)   { return h.map(k => o[k]||''); }
+
+async function bootstrap() {
+  const meta = await fetch(`${BASE}?key=${API_KEY}`);
+  const data = await meta.json();
+  if (data.error) throw new Error(JSON.stringify(data.error));
+  const existing = (data.sheets||[]).map(s => s.properties.title);
+  const toAdd = [];
+  if (!existing.includes('Jobs'))       toAdd.push({addSheet:{properties:{title:'Jobs'}}});
+  if (!existing.includes('Interviews')) toAdd.push({addSheet:{properties:{title:'Interviews'}}});
+  if (toAdd.length) await gBatch(toAdd);
+  const jh = await gGet('Jobs!A1');       if (!jh.values) await gPut('Jobs!A1', [JH]);
+  const ih = await gGet('Interviews!A1'); if (!ih.values) await gPut('Interviews!A1', [IH]);
+}
+
+async function fetchJobs() {
+  const r = await gGet('Jobs!A2:S2000');
+  return (r.values||[]).filter(x=>x[0]).map(x=>rowToObj(x,JH));
+}
+async function fetchInts() {
+  const r = await gGet('Interviews!A2:G2000');
+  return (r.values||[]).filter(x=>x[0]).map(x=>rowToObj(x,IH));
+}
+async function pushJobs() {
+  if (!jobs.length) { await gPut('Jobs!A2:S2', [Array(19).fill('')]); return; }
+  await gPut('Jobs!A2', jobs.map(j=>objToRow(j,JH)));
+}
+async function pushInts() {
+  if (!ints.length) { await gPut('Interviews!A2:G2', [Array(7).fill('')]); return; }
+  await gPut('Interviews!A2', ints.map(i=>objToRow(i,IH)));
+}
+
+// ── Status messages ────────────────────────────────────────────────
+function setMsg(m, col) {
+  const el = document.getElementById('sync-msg');
+  el.textContent = m; el.style.color = col||'#475569';
+}
+function ok()  { setMsg('Synced ✓','#22c55e'); setTimeout(()=>setMsg(''),2500); }
+function err(e){ console.error(e); setMsg('Error: '+extractMsg(e),'#f87171'); }
+function extractMsg(e) {
+  try { const p=JSON.parse(e.message); return p.message||e.message; } catch { return e.message; }
+}
+
+async function load(label) {
+  setMsg(label||'Loading…');
+  document.getElementById('btn-refresh').disabled = true;
+  try {
+    await bootstrap();
+    [jobs, ints] = await Promise.all([fetchJobs(), fetchInts()]);
+    render(); ok();
+  } catch(e) { err(e); }
+  document.getElementById('btn-refresh').disabled = false;
+}
+
+// ── Utilities ──────────────────────────────────────────────────────
+const fmtDate  = d => { if (!d) return '—'; return new Date(d).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'}); };
+const todayStr = () => new Date().toISOString().split('T')[0];
+const daysSince= d => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : null;
+const isOverdue= j => j.nextActionDate && new Date(j.nextActionDate)<new Date() && !['Rejected','Archived','Offer'].includes(j.stage);
+const isStale  = j => ['Applied','Interviewing'].includes(j.stage) && (j.lastActivity||j.appliedDate) && daysSince(j.lastActivity||j.appliedDate)>14;
+const esc      = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function getFiltered() {
+  const q  = (document.getElementById('search').value||'').toLowerCase();
+  const fs = document.getElementById('fstage').value;
+  const fp = document.getElementById('fprob').value;
+  return jobs.filter(j => {
+    if (fs!=='All' && j.stage!==fs) return false;
+    if (fp!=='All' && j.probability!==fp) return false;
+    if (overdueOnly && !isOverdue(j) && !isStale(j)) return false;
+    return !q || [j.title,j.company,j.notes,j.scoutFit].join(' ').toLowerCase().includes(q);
+  });
+}
+
+function toggleOverdue() { overdueOnly=!overdueOnly; render(); }
+
+// ── Render ─────────────────────────────────────────────────────────
+function render() {
+  const filtered = getFiltered();
+  const oc = jobs.filter(j=>isOverdue(j)||isStale(j)).length;
+
+  document.getElementById('s-total').textContent       = jobs.length;
+  document.getElementById('s-active').textContent      = jobs.filter(j=>['Applied','Interviewing'].includes(j.stage)).length;
+  document.getElementById('s-interviewing').textContent= jobs.filter(j=>j.stage==='Interviewing').length;
+  document.getElementById('s-offers').textContent      = jobs.filter(j=>j.stage==='Offer').length;
+  document.getElementById('s-ints').textContent        = ints.length;
+  document.getElementById('fcount').textContent        = filtered.length+' role'+(filtered.length!==1?'s':'');
+
+  const ob = document.getElementById('overdue-badge');
+  if (oc>0) { ob.style.display=''; ob.textContent=(overdueOnly?'✕ ALL':'⚠ '+oc)+' ACTION'+(oc!==1?'S':''); ob.style.background=overdueOnly?'#7f1d1d':'#1a0808'; }
+  else { ob.style.display='none'; }
+
+  if (curView==='board') renderBoard(filtered);
+  else renderList(filtered);
+  renderIntTab();
+}
+
+function renderBoard(filtered) {
+  document.getElementById('board-view').style.display='flex';
+  document.getElementById('list-view').style.display='none';
+  document.getElementById('empty-msg').style.display='none';
+
+  const stages = ['Seen','Applied','Interviewing','Offer','Rejected'];
+  document.getElementById('board-view').innerHTML = stages.map(stage => {
+    const cols = filtered.filter(j=>j.stage===stage);
+    const ac   = SCOL[stage];
+    const cards = cols.length ? cols.map(job => {
+      const over=isOverdue(job), stale=isStale(job);
+      const ji=ints.filter(i=>i.jobId===job.id).length;
+      return `<div class="card" onclick="openJobModal('${job.id}')" style="border-left:3px solid ${over?'#ef4444':stale?'#f59e0b':ac};margin-bottom:7px">
+        <div style="font-size:11px;font-weight:600;color:#e2e8f0;line-height:1.35;margin-bottom:2px">${esc(job.title||'Untitled')}</div>
+        <div style="font-size:10px;color:#334155;margin-bottom:5px">${esc(job.company||'—')}</div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:3px">
+          ${job.probability?`<span class="pill" style="background:${PC[job.probability].bg};color:${PC[job.probability].tx};border:1px solid ${PC[job.probability].bd}">${job.probability}</span>`:''}
+          ${job.workModel?`<span class="pill" style="background:#060d18;color:#1e2d45">${esc(job.workModel)}</span>`:''}
+        </div>
+        ${over?`<div style="font-size:9px;color:#ef4444;font-weight:700;margin-top:3px">⚠ OVERDUE — ${esc(job.nextAction||'action needed')}</div>`:''}
+        ${!over&&stale?`<div style="font-size:9px;color:#f59e0b;margin-top:3px">⏱ ${daysSince(job.lastActivity||job.appliedDate)}d stale</div>`:''}
+        ${!over&&!stale&&job.nextAction?`<div style="font-size:9px;color:#1e3a52;margin-top:3px">→ ${esc(job.nextAction)}${job.nextActionDate?' · '+fmtDate(job.nextActionDate):''}</div>`:''}
+        ${job.appliedDate?`<div style="font-size:9px;color:#1a2740;margin-top:2px">Applied ${fmtDate(job.appliedDate)}</div>`:''}
+        ${ji>0?`<div style="font-size:9px;color:#38bdf8;margin-top:2px">🎙 ${ji} interview${ji>1?'s':''}</div>`:''}
+      </div>`;
+    }).join('') : `<div style="color:#0d1929;font-size:10px;padding:10px 0;text-align:center">—</div>`;
+
+    return `<div class="col">
+      <div class="col-hdr">
+        <span class="col-name" style="color:${ac}">${stage}</span>
+        <span class="col-count">${cols.length}</span>
+      </div>${cards}
+    </div>`;
+  }).join('');
+}
+
+function renderList(filtered) {
+  document.getElementById('board-view').style.display='none';
+  document.getElementById('list-view').style.display='block';
+  document.getElementById('empty-msg').style.display='none';
+  if (!filtered.length) {
+    document.getElementById('list-view').innerHTML='<div style="padding:40px;text-align:center;color:#0f1d33;font-size:13px">No roles match filters.</div>';
+    return;
+  }
+  document.getElementById('list-view').innerHTML=`<table>
+    <thead><tr>${['Role','Company','Stage','Prob','Applied','Next action','Int.',''].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${filtered.map(job=>{
+      const ac=SCOL[job.stage]||'#475569';
+      const over=isOverdue(job), stale=isStale(job);
+      const ji=ints.filter(i=>i.jobId===job.id).length;
+      return `<tr class="clickable" onclick="openJobModal('${job.id}')">
+        <td style="color:#e2e8f0;font-weight:500;white-space:nowrap">
+          ${over?`<span style="color:#ef4444;margin-right:4px">⚠</span>`:''}
+          ${!over&&stale?`<span style="width:5px;height:5px;background:#f59e0b;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle"></span>`:''}
+          ${esc(job.title||'—')}
+        </td>
+        <td style="color:#475569">${esc(job.company||'—')}</td>
+        <td><span class="pill" style="color:${ac};background:#060d18;border:1px solid ${ac}25">${job.stage}</span></td>
+        <td>${job.probability?`<span class="pill" style="background:${PC[job.probability].bg};color:${PC[job.probability].tx}">${job.probability}</span>`:''}</td>
+        <td style="color:#334155;white-space:nowrap;font-size:11px">${fmtDate(job.appliedDate)}</td>
+        <td style="color:${over?'#ef4444':stale?'#f59e0b':'#334155'};font-size:11px;white-space:nowrap">${esc(job.nextAction||'—')}${job.nextActionDate?' · '+fmtDate(job.nextActionDate):''}</td>
+        <td style="color:#38bdf8;font-size:11px">${ji||'—'}</td>
+        <td><button class="btn bg" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();openJobModal('${job.id}')">Edit</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function renderIntTab() {
+  document.getElementById('int-count').textContent = ints.length+' interview'+(ints.length!==1?'s':'')+' logged';
+  if (!ints.length) { document.getElementById('int-table').innerHTML='<div style="padding:40px;text-align:center;color:#0f1d33;font-size:13px">No interviews logged yet.</div>'; return; }
+  const sorted = [...ints].sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('int-table').innerHTML=`<table>
+    <thead><tr>${['Date','Role','Company','Type','Interviewer','Outcome',''].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${sorted.map(int=>{
+      const job=jobs.find(j=>j.id===int.jobId);
+      const oc=int.outcome==='Progressed'||int.outcome==='Offer made'?'#22c55e':int.outcome==='Rejected'?'#ef4444':'#f59e0b';
+      return `<tr class="clickable" onclick="openIntModal('${int.id}')">
+        <td style="color:#334155;white-space:nowrap">${fmtDate(int.date)}</td>
+        <td style="color:#e2e8f0;font-weight:500">${esc(job?.title||'—')}</td>
+        <td style="color:#475569">${esc(job?.company||'—')}</td>
+        <td><span class="pill" style="background:#0a1525;color:#818cf8;border:1px solid #818cf820">${esc(int.type||'—')}</span></td>
+        <td style="color:#475569">${esc(int.interviewer||'—')}</td>
+        <td>${int.outcome?`<span class="pill" style="background:#060d18;color:${oc};border:1px solid ${oc}30">${int.outcome}</span>`:''}</td>
+        <td><button class="btn bg" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();openIntModal('${int.id}')">Edit</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ── View / Tab switching ───────────────────────────────────────────
+function setView(v) {
+  curView = v;
+  ['board','list'].forEach(x=>{
+    const btn=document.getElementById('vbtn-'+x);
+    btn.style.background = v===x?'#1a2e4a':'transparent';
+    btn.style.color       = v===x?'#38bdf8':'#334155';
+  });
+  render();
+}
+
+function setTab(t) {
+  curTab = t;
+  document.getElementById('pane-roles').style.display      = t==='roles'?'':'none';
+  document.getElementById('pane-interviews').style.display = t==='interviews'?'':'none';
+  ['roles','interviews'].forEach(x=>{
+    const btn=document.getElementById('tab-'+x);
+    btn.style.borderBottom = t===x?'2px solid #38bdf8':'2px solid transparent';
+    btn.style.color        = t===x?'#38bdf8':'#334155';
+  });
+  render();
+}
+
+// ── Job modal ──────────────────────────────────────────────────────
+const JF = ['title','company','location','workModel','salary','stage','probability','source','url','contactName','contactEmail','contactPhone','appliedDate','lastActivity','nextAction','nextActionDate','scoutFit','notes'];
+
+function openJobModal(id) {
+  editingJobId = id;
+  const job = id ? jobs.find(j=>j.id===id) : null;
+  document.getElementById('jm-title').textContent = id?'Edit role':'Add role';
+  document.getElementById('jm-log-int').style.display = id?'':'none';
+  JF.forEach(f=>{
+    const el=document.getElementById('jf-'+f);
+    if (!el) return;
+    el.value = job ? (job[f]||'') : (f==='workModel'?'Hybrid':f==='stage'?'Seen':f==='probability'?'Med':'');
+  });
+  const da = document.getElementById('jm-del-area');
+  da.innerHTML = id ? `<button class="btn bd" onclick="confirmDelJob()">Delete</button>` : '';
+  const li = document.getElementById('jm-linked-ints');
+  const jobInts = id ? ints.filter(i=>i.jobId===id).sort((a,b)=>b.date.localeCompare(a.date)) : [];
+  li.innerHTML = jobInts.length ? `<div style="margin-top:14px;padding:11px;background:#07101f;border-radius:8px;border:1px solid #0a1525">
+    <div style="font-size:9px;color:#1e2d45;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Interviews for this role</div>
+    ${jobInts.map(i=>`<div onclick="swapToInt('${i.id}')" style="padding:5px 9px;border-radius:5px;cursor:pointer;display:flex;gap:9px;align-items:center;font-size:10px" onmouseover="this.style.background='#0a1525'" onmouseout="this.style.background='transparent'">
+      <span style="color:#334155">${fmtDate(i.date)}</span>
+      <span style="color:#818cf8">${esc(i.type)}</span>
+      <span style="color:#475569">${esc(i.interviewer||'—')}</span>
+      <span style="margin-left:auto;color:${i.outcome==='Progressed'||i.outcome==='Offer made'?'#22c55e':i.outcome==='Rejected'?'#ef4444':'#f59e0b'};font-size:9px">${i.outcome||'Pending'}</span>
+    </div>`).join('')}
+  </div>` : '';
+  document.getElementById('job-overlay').classList.add('open');
+}
+
+function closeJobModal() { document.getElementById('job-overlay').classList.remove('open'); editingJobId=null; }
+function swapToInt(id)   { closeJobModal(); openIntModal(id); }
+function logIntFromJob() { const jid=editingJobId; closeJobModal(); openIntModal(null,jid); }
+
+function confirmDelJob() {
+  document.getElementById('jm-del-area').innerHTML=`<span style="font-size:11px;color:#f87171;display:flex;gap:5px;align-items:center">
+    Delete?
+    <button class="btn bd" onclick="deleteJob()">Yes</button>
+    <button class="btn bg" onclick="openJobModal('${editingJobId}')">Cancel</button>
+  </span>`;
+}
+
+async function saveJob() {
+  const id = editingJobId || String(Date.now());
+  const job = {id};
+  JF.forEach(f=>{ job[f]=document.getElementById('jf-'+f).value||''; });
+  if (!job.title) { alert('Job title is required.'); return; }
+  jobs = editingJobId ? jobs.map(j=>j.id===editingJobId?job:j) : [job,...jobs];
+  closeJobModal(); render(); setMsg('Saving…');
+  try { await pushJobs(); ok(); } catch(e) { err(e); }
+}
+
+async function deleteJob() {
+  jobs = jobs.filter(j=>j.id!==editingJobId);
+  ints = ints.filter(i=>i.jobId!==editingJobId);
+  closeJobModal(); render(); setMsg('Deleting…');
+  try { await Promise.all([pushJobs(),pushInts()]); ok(); } catch(e) { err(e); }
+}
+
+// ── Interview modal ────────────────────────────────────────────────
+function openIntModal(id, preJobId) {
+  editingIntId = id;
+  const int = id ? ints.find(i=>i.id===id) : null;
+  document.getElementById('im-title').textContent = id?'Edit interview':'Log interview';
+  const sel = document.getElementById('if-jobId');
+  sel.innerHTML = '<option value="">Select role…</option>' + jobs.map(j=>`<option value="${j.id}">${esc(j.company?j.company+' — ':'')}${esc(j.title)}</option>`).join('');
+  document.getElementById('if-jobId').value      = int?int.jobId:preJobId||'';
+  document.getElementById('if-date').value        = int?int.date:'';
+  document.getElementById('if-type').value        = int?int.type:'Phone screen';
+  document.getElementById('if-interviewer').value = int?int.interviewer:'';
+  document.getElementById('if-outcome').value     = int?int.outcome:'';
+  document.getElementById('if-notes').value       = int?int.notes:'';
+  document.getElementById('im-del-area').innerHTML= id?`<button class="btn bd" onclick="deleteInt()">Delete</button>`:'';
+  document.getElementById('int-overlay').classList.add('open');
+}
+
+function closeIntModal() { document.getElementById('int-overlay').classList.remove('open'); editingIntId=null; }
+
+async function saveInt() {
+  const jobId = document.getElementById('if-jobId').value;
+  if (!jobId) { alert('Please select a role.'); return; }
+  const id  = editingIntId||String(Date.now());
+  const int = { id, jobId,
+    date:        document.getElementById('if-date').value,
+    type:        document.getElementById('if-type').value,
+    interviewer: document.getElementById('if-interviewer').value,
+    outcome:     document.getElementById('if-outcome').value,
+    notes:       document.getElementById('if-notes').value
+  };
+  ints = editingIntId ? ints.map(i=>i.id===editingIntId?int:i) : [int,...ints];
+  closeIntModal(); render(); setMsg('Saving…');
+  try { await pushInts(); ok(); } catch(e) { err(e); }
+}
+
+async function deleteInt() {
+  ints = ints.filter(i=>i.id!==editingIntId);
+  closeIntModal(); render(); setMsg('Deleting…');
+  try { await pushInts(); ok(); } catch(e) { err(e); }
+}
+
+// ── Export ─────────────────────────────────────────────────────────
+function doExport() {
+  const toCsv = (h,rows) => [h.join(','),...rows.map(r=>h.map(k=>`"${(r[k]||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+  const blob = new Blob([`SCOUT Export ${todayStr()}\n\nROLES\n${toCsv(JH,jobs)}\n\nINTERVIEWS\n${toCsv(IH,ints)}`],{type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`scout-${todayStr()}.csv`; a.click();
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+setView('board');
+setTab('roles');
+load('Connecting to Google Sheets…');
+</script>
+</body>
+</html>
